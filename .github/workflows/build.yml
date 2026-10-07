@@ -1,0 +1,157 @@
+name: char-spectrum
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TARGET: CharSpectrum
+  NAME: "char-spectrum"
+  AU: "aufx ChSp ChAr"
+
+jobs:
+  native:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Linux packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev mesa-vulkan-drivers xvfb xauth
+
+      - name: Build
+        run: |
+          cmake -B build
+          targets="${TARGET}_clap ${TARGET}_vst3"
+          if [ "$RUNNER_OS" = macOS ]; then targets="$targets ${TARGET}_auv2"; fi
+          cmake --build build --config Release --parallel 4 --target $targets spectrum-tests
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Check out clap-validator
+        uses: actions/checkout@v7
+        with:
+          repository: free-audio/clap-validator
+          ref: 0.4.1
+          path: validator
+
+      - name: Validate CLAP
+        run: |
+          plugin=$(find build -name "$NAME.clap" -print -quit)
+          test -n "$plugin"
+          cargo run --release --locked --manifest-path validator/Cargo.toml -- validate "$plugin" --only-failed
+
+      # Includes pluginval's editor tests, which open the interface.
+      - name: Validate VST3
+        run: |
+          case "$RUNNER_OS" in
+            macOS) platform=macOS; binary=pluginval-dist/pluginval.app/Contents/MacOS/pluginval ;;
+            Linux) platform=Linux; binary=pluginval-dist/pluginval ;;
+            Windows) platform=Windows; binary=pluginval-dist/pluginval.exe ;;
+          esac
+          curl -sSL -o pluginval.zip "https://github.com/Tracktion/pluginval/releases/download/v1.0.4/pluginval_$platform.zip"
+          unzip -q pluginval.zip -d pluginval-dist
+          plugin=$(find build -name "$NAME.vst3" -print -quit)
+          test -n "$plugin"
+          if [ "$RUNNER_OS" = Linux ]; then run="xvfb-run -a"; fi
+          $run "$binary" --validate "$plugin" --strictness-level 5
+
+      - name: Validate AU
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "build/$NAME.component" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          auval -v $AU
+
+      - name: Upload validated plugins
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.TARGET }}-${{ matrix.os }}
+          path: |
+            build/**/${{ env.NAME }}.clap
+            build/**/${{ env.NAME }}.clap.resources
+            build/**/${{ env.NAME }}.vst3
+            build/**/${{ env.NAME }}.component
+          if-no-files-found: error
+
+  wclap:
+    name: WCLAP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # The interface's page is compiled with Emscripten.
+      - name: Install Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.11
+
+      - name: Install the WASI SDK
+        run: |
+          curl -sSL https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-33/wasi-sdk-33.0-x86_64-linux.tar.gz | tar xz
+          echo "WASI_SDK=$PWD/wasi-sdk-33.0-x86_64-linux" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          cmake -B build-wclap -DCMAKE_TOOLCHAIN_FILE="$WASI_SDK/share/cmake/wasi-sdk-p1.cmake"
+          cmake --build build-wclap --parallel 4
+          mv "build-wclap/$TARGET.wclap.tar.gz" "build-wclap/$NAME.wclap.tar.gz"
+
+      - name: Check the archive
+        run: |
+          tar tzf "build-wclap/$NAME.wclap.tar.gz" | tee contents.txt
+          grep -qx 'module.wasm' contents.txt
+          grep -qx 'resources/page/index.html' contents.txt
+
+      - name: Upload WCLAP
+        uses: actions/upload-artifact@v7
+        with:
+          path: build-wclap/${{ env.NAME }}.wclap.tar.gz
+          archive: false
+          if-no-files-found: error
+
+  release:
+    name: Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [native, wclap]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Package
+        run: |
+          mkdir dist
+          for pair in macos-latest:macOS windows-latest:Windows ubuntu-latest:Linux; do
+            os=${pair%%:*}; label=${pair##*:}
+            out="pack/$NAME"
+            rm -rf pack; mkdir -p "$out"
+            find "artifacts/$TARGET-$os" -maxdepth 4 \( -name "$NAME.clap" -o -name "$NAME.clap.resources" \
+              -o -name "$NAME.vst3" -o -name "$NAME.component" \) -prune -exec cp -R {} "$out/" \;
+            (cd pack && zip -qr "../dist/$NAME-$label.zip" "$NAME")
+          done
+          find artifacts -name "$NAME.wclap.tar.gz" -type f -exec cp {} dist/ \;
+          test -f "dist/$NAME.wclap.tar.gz"
+          ls -l dist
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --generate-notes

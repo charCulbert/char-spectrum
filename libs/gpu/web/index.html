@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plugin interface</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #121416; color: #aab3bb; overflow: hidden; font: 14px system-ui; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    p:not([hidden]) { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <p id="no-webgpu" hidden>This interface needs a browser with WebGPU.</p>
+  <script>
+    if (!navigator.gpu) document.getElementById('no-webgpu').hidden = false;
+    var Module = {canvas: document.getElementById('canvas')};
+  </script>
+  <script src="gui.js"></script>
+</body>
+</html>
