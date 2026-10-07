@@ -1,11 +1,11 @@
 # char-spectrum
 
-A spectrum analyzer plug-in, drawn on the GPU with WebGPU.
+A spectrum analyzer plug-in, drawn on the GPU with WebGPU/Dawn.
 
-It passes audio through untouched and shows its spectrum from 10 Hz to 30 kHz,
-on a log frequency scale with a 4.5 dB per octave tilt around 1 kHz, so music
-looks roughly level. Drag Smoothing to set how slowly the levels fall back;
-double-click it to reset.
+![char-spectrum](docs/screenshot.png)
+
+The plugin shows a log frequency spectrum with a 4.5 dB per octave tilt around 1 kHz. 
+Smoothing can be adjusted to have a more or less reactive spectrum.
 
 ## Download
 
