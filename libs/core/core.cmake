@@ -48,10 +48,18 @@ endfunction()
 #   macOS and VST3 bundles   <bundle>/Contents/Resources/
 #   loose binaries           <binary>.resources/ (Windows and Linux CLAPs)
 #   WCLAP                    <name>.wclap.tar.gz: module.wasm and resources/
-# The copy runs on every build, so edits to the folder need no relink. Pass
-# DEPENDS <target> when a build step assembles the folder.
+# The project's LICENSE and THIRD_PARTY_NOTICES.md, where they exist, go with
+# it (at the WCLAP's root). The copy runs on every build, so edits to the
+# folder need no relink. Pass DEPENDS <target> when a build step assembles the
+# folder.
 function(core_ship_resources name folder)
     cmake_parse_arguments(ARG "" "" "DEPENDS" ${ARGN})
+    set(notices "")
+    foreach(file LICENSE THIRD_PARTY_NOTICES.md)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${file}")
+            list(APPEND notices "${CMAKE_CURRENT_SOURCE_DIR}/${file}")
+        endif()
+    endforeach()
     foreach(format clap vst3 auv2 auv3 standalone aax)
         set(target ${name}_${format})
         if(NOT TARGET ${target})
@@ -63,10 +71,28 @@ function(core_ship_resources name folder)
             # next to a loose binary (TARGET_FILE here would make the target depend on itself)
             set(destination "$<TARGET_FILE_DIR:${target}>/$<TARGET_FILE_NAME:${target}>.resources")
         endif()
-        if(folder)
+        if(folder OR notices)
+            set(copyFolder "")
+            if(folder)
+                set(copyFolder COMMAND ${CMAKE_COMMAND} -E copy_directory "${folder}" "${destination}")
+            endif()
+            set(copyNotices "")
+            if(notices)
+                set(copyNotices COMMAND ${CMAKE_COMMAND} -E copy ${notices} "${destination}")
+            endif()
+            # A copy without a relink changes a signed bundle, so sign it again
+            # when it already has its binary. (The standalone app's build adds
+            # files after this, so it keeps only its signing after linking.)
+            set(resign "")
+            if(APPLE AND NOT format MATCHES "auv3|aax|standalone")
+                set(resign COMMAND /bin/sh -c "[ -z \"$(ls -A \"$1\" 2>/dev/null)\" ] || codesign --force --sign - \"$1/../..\"" sh "$<TARGET_FILE_DIR:${target}>")
+            endif()
             add_custom_target(${target}_resources
                 COMMAND ${CMAKE_COMMAND} -E rm -rf "${destination}"
-                COMMAND ${CMAKE_COMMAND} -E copy_directory "${folder}" "${destination}"
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${destination}"
+                ${copyFolder}
+                ${copyNotices}
+                ${resign}
                 VERBATIM)
             if(ARG_DEPENDS)
                 add_dependencies(${target}_resources ${ARG_DEPENDS})
@@ -93,6 +119,13 @@ function(core_ship_resources name folder)
         if(folder)
             list(APPEND contents resources)
             set(copy COMMAND ${CMAKE_COMMAND} -E copy_directory "${folder}" "${bundle}/resources")
+        endif()
+        if(notices)
+            list(APPEND copy COMMAND ${CMAKE_COMMAND} -E copy ${notices} "${bundle}")
+            foreach(file ${notices})
+                get_filename_component(file "${file}" NAME)
+                list(APPEND contents "${file}")
+            endforeach()
         endif()
         add_custom_target(${name}_wclap_bundle ALL
             COMMAND ${CMAKE_COMMAND} -E rm -rf "${bundle}"
