@@ -11,6 +11,7 @@ permissions:
 env:
   TARGET: CharSpectrum
   NAME: "char-spectrum"
+  PROJECT: .
   AU: "aufx ChSp ChAr"
 
 jobs:
@@ -44,6 +45,12 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Check the licences ship
+        run: |
+          dir=$(find build \( -path "*/$NAME.clap/Contents/Resources" -o -name "$NAME.clap.resources" \) -type d -print -quit)
+          for f in LICENSE THIRD_PARTY_NOTICES.md; do [ ! -f "$PROJECT/$f" ] || test -f "$dir/$f"; done
+          ls "$dir/THIRD_PARTY_LICENSES/"*.txt
 
       - name: Check out clap-validator
         uses: actions/checkout@v7
@@ -119,6 +126,8 @@ jobs:
         run: |
           tar tzf "build-wclap/$NAME.wclap.tar.gz" | tee contents.txt
           grep -qx 'module.wasm' contents.txt
+          for f in LICENSE THIRD_PARTY_NOTICES.md; do [ ! -f "$PROJECT/$f" ] || grep -qx "$f" contents.txt; done
+          grep -q '^THIRD_PARTY_LICENSES/.*\.txt$' contents.txt
           grep -qx 'resources/page/index.html' contents.txt
 
       - name: Upload WCLAP

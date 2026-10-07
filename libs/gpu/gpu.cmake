@@ -18,6 +18,9 @@ include(FetchContent)
 set(GPU_DIR "${CMAKE_CURRENT_LIST_DIR}")
 set(GPU_DAWN_RELEASE "https://github.com/google/dawn/releases/download/v20260922.191850")
 set(GPU_DAWN_BUILD "Dawn-73cc233a8075446b7d377f2169323f1d2ebc1c89")
+# The licences of what each Dawn release and Emscripten version compile in
+# are in licenses/, one file per version: a new pin needs a new file.
+get_filename_component(GPU_DAWN_VERSION "${GPU_DAWN_RELEASE}" NAME)
 
 if(EMSCRIPTEN)
     # Dawn's WebGPU C++ API for Emscripten, over the browser's WebGPU.
@@ -42,6 +45,8 @@ elseif(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
             URL_HASH SHA256=f40bfaa23c149d2728fe094ac9dad7c4f6b7340c29d752301ae6be51d6080125)
         FetchContent_MakeAvailable(dawn)
     endif()
+    set_property(GLOBAL APPEND PROPERTY CORE_THIRD_PARTY_LICENSES
+        "dawn=${GPU_DIR}/licenses/dawn-${GPU_DAWN_VERSION}.txt" "dawn_intel=")
     if(NOT TARGET dawn::webgpu_dawn)
         find_package(Threads REQUIRED) # Dawn's config uses Threads::Threads without finding it
         file(GLOB dawn_config_dir "${dawn_SOURCE_DIR}/lib*/cmake/Dawn") # lib/ or, on Linux, lib64/
@@ -113,6 +118,12 @@ endfunction()
 function(gpu_wclap_resources out name folder)
     include(ExternalProject)
     find_program(EMCMAKE emcmake REQUIRED)
+    find_program(EMCC emcc REQUIRED)
+    execute_process(COMMAND "${EMCC}" --version OUTPUT_VARIABLE version COMMAND_ERROR_IS_FATAL ANY)
+    string(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+" version "${version}")
+    set_property(GLOBAL APPEND PROPERTY CORE_THIRD_PARTY_LICENSES
+        "emscripten=${GPU_DIR}/licenses/emscripten-${version}.txt"
+        "emdawnwebgpu=${GPU_DIR}/licenses/emdawnwebgpu-${GPU_DAWN_VERSION}.txt")
     ExternalProject_Add(${name}_page
         SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}"
         BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/page-build"

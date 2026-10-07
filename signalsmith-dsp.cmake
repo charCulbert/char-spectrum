@@ -9,3 +9,5 @@ FetchContent_Declare(signalsmith_dsp
     SOURCE_SUBDIR none) # headers only: don't run its CMakeLists
 FetchContent_MakeAvailable(signalsmith_dsp)
 set(SIGNALSMITH_DSP_INCLUDE "${FETCHCONTENT_BASE_DIR}/signalsmith")
+set_property(GLOBAL APPEND PROPERTY CORE_THIRD_PARTY_LICENSES
+    "signalsmith=${FETCHCONTENT_BASE_DIR}/signalsmith/dsp/LICENSE.txt")
