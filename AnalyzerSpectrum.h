@@ -11,7 +11,8 @@
 namespace chardsp
 {
 // A spectrum for display, after the method of Signalsmith Audio's analyser
-// (github.com/Signalsmith-Audio/basics, analyser.h, MIT), at three resolutions:
+// (github.com/Signalsmith-Audio/basics, analyser.h, MIT; Copyright 2022-2025
+// Signalsmith Audio / Geraint Luff), at three resolutions:
 //
 // - Blackman-Harris-windowed FFTs (Signalsmith's real-input FFT) every few
 //   milliseconds: a long window (16384 samples) for the

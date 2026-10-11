@@ -8,4 +8,5 @@ This plugin is built with, and its binaries include, the following. CMake downlo
 - Clay, for layout: zlib. https://github.com/nicbarker/clay
 - stb_truetype, for text: MIT or public domain. https://github.com/nothings/stb
 - Signalsmith Audio's DSP library, for its FFT: MIT. https://github.com/Signalsmith-Audio/dsp
+- Signalsmith Basics (AnalyzerSpectrum.h follows its analyser; licence in licenses/SignalsmithBasics.txt): MIT. https://github.com/Signalsmith-Audio/basics
 - IBM Plex Mono (`resources/fonts/`, with its licence there): SIL Open Font License 1.1. https://github.com/IBM/plex

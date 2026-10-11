@@ -30,6 +30,8 @@ set(LIBS "${CMAKE_CURRENT_SOURCE_DIR}/libs")
 include(${LIBS}/gpu/gpu.cmake)
 include(${LIBS}/draw2d/draw2d.cmake)
 include(signalsmith-dsp.cmake)
+# AnalyzerSpectrum.h follows Signalsmith Basics' analyser.
+set_property(GLOBAL APPEND PROPERTY CORE_THIRD_PARTY_LICENSES "signalsmith-basics=${CMAKE_CURRENT_SOURCE_DIR}/licenses/SignalsmithBasics.txt")
 
 # WCLAP builds this file a second time with Emscripten, for the page the host shows.
 if(GPU_PAGE)

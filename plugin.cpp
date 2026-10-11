@@ -23,7 +23,7 @@
 #include <string.h>
 #include <string>
 #include <vector>
-#include "chardsp_Spectrum.h"
+#include "AnalyzerSpectrum.h"
 #include "core/messages.h"
 #include "core/resources.h"
 #include "gpu/gui.h"
