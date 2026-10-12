@@ -34,7 +34,7 @@ jobs:
         timeout-minutes: 10
         run: |
           apt="sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
-          $apt update && $apt install -y libasound2-dev libx11-dev mesa-vulkan-drivers xvfb xauth
+          $apt update && $apt install -y libasound2-dev libx11-dev libxrandr-dev mesa-vulkan-drivers xvfb xauth
 
       - name: Build
         run: |
@@ -128,7 +128,7 @@ jobs:
           grep -qx 'module.wasm' contents.txt
           for f in LICENSE THIRD_PARTY_NOTICES.md; do [ ! -f "$PROJECT/$f" ] || grep -qx "$f" contents.txt; done
           grep -q '^THIRD_PARTY_LICENSES/.*\.txt$' contents.txt
-          grep -qx 'resources/page/index.html' contents.txt
+          grep -qx 'page/index.html' contents.txt
 
       - name: Upload WCLAP
         uses: actions/upload-artifact@v7

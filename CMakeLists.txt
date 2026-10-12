@@ -1,4 +1,5 @@
-# char-spectrum: a spectrum analyzer drawn with our own WebGPU code (libs/draw2d).
+# char-spectrum: a spectrum analyzer drawn with chardraw's Spectrum view, from
+# char-clap-template's libraries.
 #
 #   cmake -B build && cmake --build build     CLAP, VST3, AU (macOS), standalone
 #   WCLAP: see README.md for the one extra flag (the WASI SDK toolchain).
@@ -9,7 +10,7 @@ if(CMAKE_HOST_APPLE AND NOT CMAKE_SYSTEM_NAME AND NOT DEFINED CMAKE_OSX_ARCHITEC
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 endif()
 
-project(CharSpectrum VERSION 1.0.0 LANGUAGES C CXX)
+project(CharSpectrum VERSION 1.0.4 LANGUAGES C CXX)
 if(APPLE)
     enable_language(OBJC OBJCXX)
 endif()
@@ -26,17 +27,27 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux") # VST3 modules link static libraries
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 
-set(LIBS "${CMAKE_CURRENT_SOURCE_DIR}/libs")
+# The libraries (libs/) come from char-clap-template, pinned to a release. To
+# build against a local checkout instead, configure with
+# -DFETCHCONTENT_SOURCE_DIR_CLAP_TEMPLATE=<path>.
+include(FetchContent)
+FetchContent_Declare(clap_template
+    GIT_REPOSITORY https://github.com/charCulbert/char-clap-template.git
+    GIT_TAG v0.1.0
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR none)
+FetchContent_MakeAvailable(clap_template)
+set(LIBS "${clap_template_SOURCE_DIR}/libs")
 include(${LIBS}/gpu/gpu.cmake)
-include(${LIBS}/draw2d/draw2d.cmake)
+include(${LIBS}/chardraw/chardraw.cmake)
 include(signalsmith-dsp.cmake)
-# AnalyzerSpectrum.h follows Signalsmith Basics' analyser.
+# AnalyzerSpectrum.h follows Signalsmith Audio's analyser (Signalsmith Basics, MIT): its licence ships with the others.
 set_property(GLOBAL APPEND PROPERTY CORE_THIRD_PARTY_LICENSES "signalsmith-basics=${CMAKE_CURRENT_SOURCE_DIR}/licenses/SignalsmithBasics.txt")
 
 # WCLAP builds this file a second time with Emscripten, for the page the host shows.
 if(GPU_PAGE)
     gpu_add_page(page ASSETS resources) # the font, built into the page
-    draw2d_add_to(page)
+    chardraw_add_to(page)
     target_sources(page PRIVATE ui/AnalyzerView.cpp)
     return()
 endif()
@@ -44,11 +55,11 @@ endif()
 include(${LIBS}/core/core.cmake)
 
 add_library(CharSpectrum_impl STATIC plugin.cpp)
-target_include_directories(CharSpectrum_impl PRIVATE ${SIGNALSMITH_DSP_INCLUDE})
+target_include_directories(CharSpectrum_impl SYSTEM PRIVATE ${SIGNALSMITH_DSP_INCLUDE})
 core_add_to(CharSpectrum_impl)
 gpu_add_to(CharSpectrum_impl)
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
-    draw2d_add_to(CharSpectrum_impl)
+    chardraw_add_to(CharSpectrum_impl)
     target_sources(CharSpectrum_impl PRIVATE ui/AnalyzerView.cpp)
 endif()
 
@@ -88,7 +99,7 @@ endif()
 enable_testing()
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "WASI")
     add_executable(spectrum-tests tests/spectrum_test.cpp)
-    target_include_directories(spectrum-tests PRIVATE ${SIGNALSMITH_DSP_INCLUDE})
+    target_include_directories(spectrum-tests SYSTEM PRIVATE ${SIGNALSMITH_DSP_INCLUDE})
     target_compile_options(spectrum-tests PRIVATE $<IF:$<CXX_COMPILER_ID:MSVC>,/UNDEBUG,-UNDEBUG>) # the tests are assert()s
     add_test(NAME spectrum COMMAND spectrum-tests)
 endif()
