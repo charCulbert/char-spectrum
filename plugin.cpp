@@ -79,7 +79,7 @@ static const clap_plugin_descriptor_t pluginDescriptor = {
     .url = "https://github.com/charCulbert/char-spectrum",
     .manual_url = "https://github.com/charCulbert/char-spectrum",
     .support_url = "https://github.com/charCulbert/char-spectrum",
-    .version = "1.0.4",
+    .version = "1.0.5",
     .description = "A spectrum analyzer drawn with WebGPU.",
     .features = pluginFeatures,
 };

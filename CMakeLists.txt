@@ -10,7 +10,7 @@ if(CMAKE_HOST_APPLE AND NOT CMAKE_SYSTEM_NAME AND NOT DEFINED CMAKE_OSX_ARCHITEC
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
 endif()
 
-project(CharSpectrum VERSION 1.0.4 LANGUAGES C CXX)
+project(CharSpectrum VERSION 1.0.5 LANGUAGES C CXX)
 if(APPLE)
     enable_language(OBJC OBJCXX)
 endif()
@@ -33,7 +33,7 @@ endif()
 include(FetchContent)
 FetchContent_Declare(clap_template
     GIT_REPOSITORY https://github.com/charCulbert/char-clap-template.git
-    GIT_TAG v0.1.0
+    GIT_TAG v0.1.1
     GIT_SHALLOW TRUE
     SOURCE_SUBDIR none)
 FetchContent_MakeAvailable(clap_template)
